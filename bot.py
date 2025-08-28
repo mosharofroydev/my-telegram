@@ -1,5 +1,5 @@
 from pyrogra from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # ==== আপনার তথ্য ====
 API_ID = 24776633   # আপনার API_ID
