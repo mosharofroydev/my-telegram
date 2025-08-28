@@ -1,6 +1,5 @@
-from pyrogra from pyrogram import Client, filters
-from pyrogram types import InlineKeyboardMarkup, InlineKeyboardButton
-
+from pyrogram import Client, filters
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 # ==== আপনার তথ্য ====
 API_ID = 24776633   # আপনার API_ID
 API_HASH = "57b1f632044b4e718f5dce004a988d69"  # আপনার API_HASH
