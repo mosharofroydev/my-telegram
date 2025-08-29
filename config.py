@@ -1,1 +1,5 @@
-
+API_ID = 24776633
+API_HASH = "57b1f632044b4e718f5dce004a988d69"
+BOT_TOKEN = "8210471056:AAEc76RNEX1w32M7WfyY3R8uKzEBy4aOb8s"
+CHANNEL_ID = 1002912984408  # Telegram চ্যানেলের ID
+SEARCH_TIMEOUT = 120  # সার্চ রেজাল্ট auto-delete সময় (সেকেন্ডে)
