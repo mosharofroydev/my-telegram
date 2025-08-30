@@ -1,73 +1,193 @@
-from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+# (c) @RoyalKrrishna
+
+from os import link
+from telethon import Button
+from configs import Config
+from pyrogram import Client, idle
 import asyncio
+from telethon import TelegramClient
+from telethon.sessions import StringSession
+from plugins.tgraph import *
+from helpers import *
+from telethon import TelegramClient, events
+import urllib.parse
+from telethon.errors import UserNotParticipantError
+from telethon.tl.functions.channels import GetParticipantRequest
+import re
+tbot = TelegramClient('mdisktelethonbot', Config.API_ID, Config.API_HASH).start(bot_token=Config.BOT_TOKEN)
+client = TelegramClient(StringSession( Config.USER_SESSION_STRING), Config.API_ID, Config.API_HASH)
 
-from config import API_ID, API_HASH, BOT_TOKEN, CHANNEL_ID, SEARCH_TIMEOUT
 
-# ভিডিও লিস্ট
-VIDEOS = {
-    "movie1": [101, 102],
-    "movie2": [201]
-}
+async def get_user_join(id):
+    if Config.FORCE_SUB == "False":
+        return True
 
-# বট ক্লায়েন্ট
-app = Client("bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+    ok = True
+    try:
+        await tbot(GetParticipantRequest(channel=int(Config.UPDATES_CHANNEL), participant=id))
+        ok = True
+    except UserNotParticipantError:
+        ok = False
+    return ok
 
-# ---------------------
-# /start কমান্ড
-# ---------------------
-@app.on_message(filters.command("start"))
-async def start(client, message):
-    await message.reply_text(
-        "👋 Welcome! আমি আপনার বট। এখানে আপনি মুভি সার্চ করতে পারবেন।\n\n"
-        "👉 ব্যবহার করুন: /search movie1"
-    )
 
-# ---------------------
-# /search কমান্ড
-# ---------------------
-@app.on_message(filters.command("search"))
-async def search(client, message):
-    query = " ".join(message.command[1:]).lower()
-    if query in VIDEOS:
-        buttons = []
-        for idx in range(len(VIDEOS[query])):
-            buttons.append([InlineKeyboardButton(f"Watch Part {idx+1}", callback_data=f"{query}:{idx}")])
-        reply_markup = InlineKeyboardMarkup(buttons)
-        sent_msg = await message.reply_text("Select video to watch:", reply_markup=reply_markup)
+@tbot.on(events.NewMessage(incoming=True))
+async def message_handler(event):
+    try:
+        if event.message.post:
+            return
 
-        # SEARCH_TIMEOUT পরে মেসেজ ডিলিট
-        asyncio.get_event_loop().call_later(
-            SEARCH_TIMEOUT,
-            lambda: asyncio.create_task(sent_msg.delete())
+        # if event.is_channel:return
+        if event.text.startswith("/"):return
+
+        print("\n")
+        print("Message Received: " + event.text)
+
+        # Force Subscription
+        if  not await get_user_join(event.sender_id):
+            haha = await event.reply(f'''**Hey! {event.sender.first_name} 😃**
+
+**You Have To Join Our Update Channel To Use Me ✅**
+
+**Click Bellow Button To Join Now.👇🏻**''', buttons=Button.url('🍿Updates Channel🍿', f'https://t.me/{Config.UPDATES_CHANNEL_USERNAME}'))
+            await asyncio.sleep(Config.AUTO_DELETE_TIME)
+            return await haha.delete()
+
+        args = event.text
+        args = await validate_q(args)
+
+        print("Search Query: {args}".format(args=args))
+        print("\n")
+
+        if not args:
+            return
+
+        txt = await event.reply('**Searching For "{}" 🔍**'.format(event.text))
+
+
+
+        search = []
+        if event.is_group or event.is_channel:
+            group_info = await db.get_group(str(event.chat_id).replace("-100", ""))
+
+            if group_info["has_access"] and group_info["db_channel"] and await db.is_group_verified(str(event.chat_id).replace("-100", "")):
+                CHANNEL_ID = group_info["db_channel"]
+            else:
+                CHANNEL_ID = Config.CHANNEL_ID
+        else:
+            CHANNEL_ID = Config.CHANNEL_ID
+
+
+        async for i in AsyncIter(re.sub("__|\*", "", args).split()):
+            if len(i) > 2:
+               
+                search_msg = client.iter_messages(CHANNEL_ID, limit=5, search=i)
+                search.append(search_msg)
+
+        username = Config.UPDATES_CHANNEL_USERNAME
+        answer = f'**Join** [@{username}](https://telegram.me/{username}) \n\n'
+
+        c = 0
+
+        async for msg_list in AsyncIter(search):
+            async for msg in msg_list:
+                c += 1
+                f_text = re.sub("__|\*", "", msg.text)
+
+                f_text = await link_to_hyperlink(f_text)
+                answer += f'\n\n\n✅ PAGE {c}:\n\n━━━━━━━━━\n\n' + '' + f_text.split("\n", 1)[0] + '' + '\n\n' + '' + f_text.split("\n", 2)[
+                    -1] + "\n\n"
+                
+            # break
+        finalsearch = []
+        async for msg in AsyncIter(search):
+            finalsearch.append(msg)
+
+        if c <= 0:
+            answer = f'''**No Results Found For {event.text}**
+
+**Type Only Movie Name 💬**
+**Check Spelling On** [Google](http://www.google.com/search?q={event.text.replace(' ', '%20')}%20Movie) 🔍
+    '''
+
+            newbutton = [Button.url('Click To Check Spelling ✅',
+                                    f'http://www.google.com/search?q={event.text.replace(" ", "%20")}%20Movie')], [
+                            Button.url('Click To Check Release Date 📅',
+                                    f'http://www.google.com/search?q={event.text.replace(" ", "%20")}%20Movie%20Release%20Date')]
+            await txt.delete()
+            result = await event.reply(answer, buttons=newbutton, link_preview=False)
+            await asyncio.sleep(Config.AUTO_DELETE_TIME)
+            await event.delete()
+            return await result.delete()
+        else:
+            pass
+
+        answer += f"\n\n**Uploaded By @{Config.UPDATES_CHANNEL_USERNAME}**"
+        answer = await replace_username(answer)
+        html_content = await markdown_to_html(answer)
+        html_content = await make_bold(html_content)
+        
+        tgraph_result = await telegraph_handler(
+            html=html_content,
+            title=event.text,
+            author=Config.BOT_USERNAME
         )
-    else:
-        await message.reply_text("No video found.")
+        message = f'**Click Here 👇 For "{event.text}"**\n\n[🍿🎬 {str(event.text).upper()}\n🍿🎬 {str("Click me for results").upper()}]({tgraph_result})'
 
-# ---------------------
-# Inline বাটন ক্লিক হ্যান্ডলার
-# ---------------------
-@app.on_callback_query()
-async def button_click(client, callback_query):
-    movie, idx = callback_query.data.split(":")
-    idx = int(idx)
+        await txt.delete()
+        result = await event.reply(message, link_preview=False)
+        await asyncio.sleep(Config.AUTO_DELETE_TIME)
+        # await event.delete()
+        return await result.delete()
 
-    video_id = VIDEOS[movie][idx]
+    except Exception as e:
+        print(e)
+        await txt.delete()
+        result = await event.reply("Some error occurred while searching for movie")
+        await asyncio.sleep(Config.AUTO_DELETE_TIME)
+        await event.delete() 
+        return await result.delete()
 
-    # ভিডিও ফরওয়ার্ড
-    await client.forward_messages(
-        chat_id=callback_query.message.chat.id,
-        from_chat_id=CHANNEL_ID,
-        message_ids=video_id
-    )
 
-    # যদি পরবর্তী পার্ট থাকে, দেখান "Next Part" বাটন
-    next_idx = idx + 1
-    if next_idx < len(VIDEOS[movie]):
-        keyboard = [[InlineKeyboardButton("Next Part", callback_data=f"{movie}:{next_idx}")]]
-        await callback_query.message.reply_text("Next part available:", reply_markup=InlineKeyboardMarkup(keyboard))
+async def escape_url(str):
+    escape_url = urllib.parse.quote(str)
+    return escape_url
 
-# ---------------------
-# বট চালান
-# ---------------------
-app.run()
+
+# Bot Client for Inline Search
+Bot = Client(
+    session_name=Config.BOT_SESSION_NAME,
+    api_id=Config.API_ID,
+    api_hash=Config.API_HASH,
+    bot_token=Config.BOT_TOKEN,
+    plugins=dict(root="plugins")
+)
+
+print()
+print("-------------------- Initializing Telegram Bot --------------------")
+# Start Clients
+Bot.start()
+
+print("------------------------------------------------------------------")
+print()
+print(f"""
+ _____________________________________________   
+|                                             |  
+|          Deployed Successfully              |  
+|              Join @{Config.UPDATES_CHANNEL_USERNAME}                 |
+|_____________________________________________|
+    """)
+
+# User.start()
+with tbot, client:
+    tbot.run_until_disconnected()
+    client.run_until_disconnected()
+
+# Loop Clients till Disconnects
+idle()
+# After Disconnects,
+# Stop Clients
+print()
+print("------------------------ Stopped Services ------------------------")
+Bot.stop()
+# User.stop()
