@@ -18,6 +18,17 @@ async def check_subscription(user_id):
     except:
         return False
 
+# /start হ্যান্ডলার
+@bot.on(events.NewMessage(pattern="/start"))
+async def start(event):
+    await event.reply(
+        f"হ্যালো! 😃\n\n"
+        f"আমি {Config.BOT_USERNAME}।\n"
+        f"চ্যানেল @{Config.UPDATES_CHANNEL_USERNAME} এ থাকা ভিডিও সার্চ করতে আমাকে ব্যবহার করুন।\n\n"
+        f"ভালোভাবে কাজ করার জন্য চ্যানেলে জয়েন করুন।",
+        buttons=Button.url("Join Updates Channel", f"https://t.me/{Config.UPDATES_CHANNEL_USERNAME}")
+    )
+
 # Message handler
 @bot.on(events.NewMessage(incoming=True))
 async def handler(event):
