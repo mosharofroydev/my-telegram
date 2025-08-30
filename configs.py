@@ -15,7 +15,7 @@ class Config(object):
     BOT_OWNER = 7170990925
 
     # Channel where videos are stored
-    CHANNEL_ID = -1002912984408  # content channel ID
+    CHANNEL_ID = -1002912984408
 
     # Updates Channel for ForceSub
     UPDATES_CHANNEL = -1002995070932
