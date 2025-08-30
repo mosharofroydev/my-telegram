@@ -19,7 +19,7 @@ class Config(object):
 
     # Updates Channel for ForceSub
     UPDATES_CHANNEL = -1002995070932
-    UPDATES_CHANNEL_USERNAME = "uddineeowner"
+    UPDATES_CHANNEL_USERNAME = "uddinee"
 
     # Auto delete time (seconds)
     AUTO_DELETE_TIME = 60
