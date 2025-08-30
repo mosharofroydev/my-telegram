@@ -2,23 +2,23 @@
 
 import urllib.parse
 from telethon import TelegramClient, events, Button
+from telethon.tl.functions.channels import GetParticipantRequest
 from configs import Config
 
 # Telethon Bot Client
 bot = TelegramClient("video_search_bot", Config.API_ID, Config.API_HASH).start(bot_token=Config.BOT_TOKEN)
-
 
 # Force Subscription check
 async def check_subscription(user_id):
     if Config.FORCE_SUB == "False":
         return True
     try:
-        await bot.get_participants(Config.UPDATES_CHANNEL, filter=None, limit=0)  # simple check
+        await bot(GetParticipantRequest(channel=Config.UPDATES_CHANNEL, participant=user_id))
         return True
     except:
         return False
 
-
+# Message handler
 @bot.on(events.NewMessage(incoming=True))
 async def handler(event):
     if event.message.post or event.text.startswith("/"):
@@ -30,10 +30,9 @@ async def handler(event):
 
     # Force subscription
     if Config.FORCE_SUB == "True":
-        try:
-            await bot(GetParticipantRequest(channel=Config.UPDATES_CHANNEL, participant=event.sender_id))
-        except:
-            msg = await event.reply(
+        is_subscribed = await check_subscription(event.sender_id)
+        if not is_subscribed:
+            await event.reply(
                 f"Hey! Join @{Config.UPDATES_CHANNEL_USERNAME} to use me 😃",
                 buttons=Button.url("Join Updates Channel", f"https://t.me/{Config.UPDATES_CHANNEL_USERNAME}")
             )
@@ -55,7 +54,6 @@ async def handler(event):
             f"🔎 [Search on Google]({google_link})",
             link_preview=False
         )
-
 
 print("🚀 JackpotFilmBot Started!")
 bot.run_until_disconnected()
