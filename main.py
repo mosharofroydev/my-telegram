@@ -1,0 +1,61 @@
+# (c) @RoyalKrrishna
+
+import urllib.parse
+from telethon import TelegramClient, events, Button
+from configs import Config
+
+# Telethon Bot Client
+bot = TelegramClient("video_search_bot", Config.API_ID, Config.API_HASH).start(bot_token=Config.BOT_TOKEN)
+
+
+# Force Subscription check
+async def check_subscription(user_id):
+    if Config.FORCE_SUB == "False":
+        return True
+    try:
+        await bot.get_participants(Config.UPDATES_CHANNEL, filter=None, limit=0)  # simple check
+        return True
+    except:
+        return False
+
+
+@bot.on(events.NewMessage(incoming=True))
+async def handler(event):
+    if event.message.post or event.text.startswith("/"):
+        return
+
+    query = event.text.strip()
+    if not query:
+        return
+
+    # Force subscription
+    if Config.FORCE_SUB == "True":
+        try:
+            await bot(GetParticipantRequest(channel=Config.UPDATES_CHANNEL, participant=event.sender_id))
+        except:
+            msg = await event.reply(
+                f"Hey! Join @{Config.UPDATES_CHANNEL_USERNAME} to use me 😃",
+                buttons=Button.url("Join Updates Channel", f"https://t.me/{Config.UPDATES_CHANNEL_USERNAME}")
+            )
+            return
+
+    found = False
+    async for msg in bot.iter_messages(Config.CHANNEL_ID, search=query, limit=10):
+        if msg.video or msg.document:
+            await bot.send_message(event.chat_id, msg)
+            found = True
+        elif msg.text:
+            await bot.send_message(event.chat_id, msg.text)
+            found = True
+
+    if not found:
+        google_link = f"https://www.google.com/search?q={urllib.parse.quote(query + ' movie')}"
+        await event.reply(
+            f"❌ No results found for **{query}**\n\n"
+            f"🔎 [Search on Google]({google_link})",
+            link_preview=False
+        )
+
+
+print("🚀 JackpotFilmBot Started!")
+bot.run_until_disconnected()
