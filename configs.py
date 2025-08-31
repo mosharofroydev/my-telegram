@@ -1,5 +1,4 @@
  # (c) @RoyalKrrishna
-
 import urllib.parse
 from telethon import TelegramClient, events, Button
 from telethon.tl.functions.channels import GetParticipantRequest
